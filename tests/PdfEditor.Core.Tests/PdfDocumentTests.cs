@@ -1744,4 +1744,56 @@ public class PdfDocumentTests
         Assert.Contains("On the second page", back.GetPageText(1));
         Assert.Single(back.GetImages(0));
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(90)]
+    public void A_canvas_draws_paths_lines_and_text_in_one_pass(int pageRotation)
+    {
+        using var doc = PdfDocument.Create();
+        doc.AddPage(200, 200);
+        doc.SetPageRotation(0, pageRotation);
+        var red = new PdfColor(220, 20, 20);
+
+        // A square ring: the outer outline one way round, the hole the other way, as a font draws it. In a y-up
+        // system of its own, placed with its origin at (50, 150) and scaled by 2: it lands at x 50..130, y 70..150.
+        PdfPoint P(double x, double y) => new(x, y);
+        var ring = new List<ShapeStep>
+        {
+            new('M', P(0, 0)), new('L', P(40, 0)), new('L', P(40, 40)), new('L', P(0, 40)), new('Z', P(0, 0)),
+            new('M', P(10, 10)), new('L', P(10, 30)), new('L', P(30, 30)), new('L', P(30, 10)), new('Z', P(10, 10)),
+        };
+        doc.Draw(0, canvas =>
+        {
+            canvas.PlacedPath(ring, new PathStyle { Fill = red }, 2, 50, 150);
+            canvas.Line(P(10, 10), P(10, 190), 4, new PdfColor(0, 0, 255));
+            canvas.Rectangle(150, 20, 30, 10, new PdfColor(0, 160, 0));
+            canvas.Text(20, 40, "Staff", new TextStyle { Size = 20 });
+            Assert.InRange(canvas.MeasureText("Staff", new TextStyle { Size = 20 }), 30, 70);
+        });
+        Assert.Equal(1, doc.PageCount);
+
+        using var saved = PdfDocument.Open(doc.ToBytes());
+        var picture = saved.Render(0, 1, false);
+        // Pixel at a point of the page as displayed.
+        (int R, int G, int B) At(double x, double y)
+        {
+            int at = (int)y * picture.Stride + (int)x * 4;
+            return (picture.Pixels[at + 2], picture.Pixels[at + 1], picture.Pixels[at]);
+        }
+        var size = saved.GetPageSize(0);
+        // Coordinates are those of the page as displayed, whatever its rotation, so a mark is seen where it was drawn.
+        (double X, double Y) Seen(double x, double y) => (x, y);
+        bool IsRed((int R, int G, int B) c) => c.R > 180 && c.G < 80 && c.B < 80;
+        var ringBody = Seen(55, 80);   // the ring's left bar: filled
+        var hole = Seen(90, 110);      // the middle of the ring: empty (the hole)
+        var line = Seen(10, 100);
+        var bar = Seen(165, 25);
+        Assert.True(IsRed(At(ringBody.X, ringBody.Y)), "the ring is filled");
+        Assert.True(At(hole.X, hole.Y) is { R: > 240, G: > 240, B: > 240 }, "the hole stays empty");
+        Assert.True(At(line.X, line.Y) is { R: < 60, G: < 60, B: > 200 }, "the line is drawn, in blue");
+        Assert.True(At(bar.X, bar.Y) is { R: < 60, G: > 120, B: < 60 }, "the rectangle is drawn, in green");
+        Assert.Contains("Staff", saved.GetPageText(0));
+        Assert.Equal(200, pageRotation == 0 ? size.Width : size.Height, 0.5);
+    }
 }

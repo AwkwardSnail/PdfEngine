@@ -36,7 +36,7 @@ public sealed unsafe partial class PdfDocument
     /// Creates and inserts one text object, falling back to an embedded system font when the
     /// requested font cannot show every character. Returns the new object.
     /// </summary>
-    private IntPtr InsertTextObject(PageHandle page, string text, TextStyle style, Affine matrix, out bool usedFallbackFont)
+    internal IntPtr InsertTextObject(PageHandle page, string text, TextStyle style, Affine matrix, out bool usedFallbackFont)
     {
         usedFallbackFont = false;
         IntPtr obj = style.FontFile is null

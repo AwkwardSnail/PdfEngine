@@ -115,6 +115,7 @@ A PDF fixes where everything stands and RTF lets text run on, so exact positions
 - **Text** – add text (standard fonts, or an embedded TrueType font when characters need it), list the text runs on a page, edit a run in place, move or remove it.
 - **Images** – add JPEG, PNG, BMP, GIF or TGA images, list, move and remove them.
 - **Comments and highlights** – sticky-note comments, highlight/underline/strikeout/squiggly markup, search and "highlight every match".
+- **Drawing** - `Draw` gives a `PageCanvas` for putting thousands of marks on a page in one pass: filled or stroked paths (lines, curves, glyph outlines, with fill rules), lines, rectangles and text, with `PlacedPath` for outlines given in a y-up system of their own. Used to print scores and diagrams.
 - **Rendering** – render any page to BGRA pixels for display.
 
 All coordinates are in points (1/72 inch) from the top-left of the page as displayed.
